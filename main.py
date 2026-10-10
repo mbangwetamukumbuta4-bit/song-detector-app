@@ -124,6 +124,22 @@ class Dot(Widget):
         self._e.size = self.size
 
 
+class Logo(Widget):
+    """The app logo (icon.png) with rounded corners."""
+
+    def __init__(self, side=52, **kw):
+        super().__init__(size_hint=(None, None), size=(dp(side), dp(side)), **kw)
+        with self.canvas:
+            Color(1, 1, 1, 1)
+            self._r = RoundedRectangle(source="icon.png", pos=self.pos, size=self.size,
+                                       radius=[dp(side * 0.24)])
+        self.bind(pos=self._sync, size=self._sync)
+
+    def _sync(self, *a):
+        self._r.pos = self.pos
+        self._r.size = self.size
+
+
 def cover(title, side=56):
     tint = COVERS[sum(ord(c) for c in title) % len(COVERS)]
     box = Surface(bg=tint, radius=side * 0.28, size_hint=(None, None), size=(dp(side), dp(side)))
@@ -309,7 +325,13 @@ class Home(Screen):
         super().__init__(**kw)
         self.busy = False
         root = BoxLayout(orientation="vertical", padding=[dp(20), dp(16), dp(20), dp(14)], spacing=dp(8))
-        root.add_widget(label("Song Detector", 28, bold=True, height=40))
+        top = BoxLayout(size_hint_y=None, height=dp(56), spacing=dp(12))
+        top.add_widget(Logo(52, pos_hint={"center_y": 0.5}))
+        names = BoxLayout(orientation="vertical")
+        names.add_widget(label("Wenzosong Detector", 22, bold=True, height=32, one_line=True))
+        names.add_widget(label("Find any song in seconds", 13, DIM, height=22))
+        top.add_widget(names)
+        root.add_widget(top)
         self.counter = label("", 14, DIM, height=22)
         root.add_widget(self.counter)
 
@@ -596,7 +618,7 @@ class SettingsScreen(Screen):
 
 
 class SongApp(App):
-    title = "Song Detector"
+    title = "Wenzosong Detector"
 
     def build(self):
         core.DATA_DIR = self.user_data_dir
