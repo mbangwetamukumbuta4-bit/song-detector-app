@@ -1,5 +1,5 @@
 [app]
-title = Song Detector
+title = Wenzosong Detector
 package.name = songdetector
 package.domain = org.songdetector
 source.dir = .
@@ -15,6 +15,10 @@ android.archs = arm64-v8a
 android.accept_sdk_license = True
 android.ndk = 25b
 p4a.branch = v2024.01.21
+icon.filename = %(source.dir)s/icon.png
+presplash.filename = %(source.dir)s/icon.png
+android.presplash_color = #1A2E6C
+
 [buildozer]
 log_level = 2
 warn_on_root = 1
