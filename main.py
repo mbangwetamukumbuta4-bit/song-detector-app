@@ -27,12 +27,12 @@ import preview
 SECONDS = 10
 
 # ---------- colours (Neon Dark Theme) ----------
-BG = (0.04, 0.02, 0.08, 1)          # Deep black-purple background
-CARD = (0.10, 0.08, 0.18, 1)        # Dark card
-TEXT = (0.95, 0.95, 1, 1)           # Almost white text
-DIM = (0.55, 0.50, 0.75, 1)         # Soft purple-grey
-AMBER = (0.70, 0.45, 1.0, 1)        # Neon purple
-REC = (0.55, 0.30, 1.0, 1)          # Strong neon purple for the button
+BG = (0.04, 0.02, 0.08, 1)
+CARD = (0.10, 0.08, 0.18, 1)
+TEXT = (0.95, 0.95, 1, 1)
+DIM = (0.55, 0.50, 0.75, 1)
+AMBER = (0.70, 0.45, 1.0, 1)
+REC = (0.55, 0.30, 1.0, 1)
 DARK = (0.05, 0.03, 0.10, 1)
 CLEAR = (0, 0, 0, 0)
 
@@ -216,7 +216,6 @@ class ListenButton(ButtonBehavior, Widget):
             else:
                 Color(*REC)
             Ellipse(pos=(cx - r, cy - r), size=(2 * r, 2 * r))
-            # microphone icon
             Color(1, 1, 1, 1)
             w, h = r * 0.36, r * 0.7
             RoundedRectangle(pos=(cx - w / 2, cy - h * 0.35), size=(w, h), radius=[w / 2])
@@ -224,7 +223,6 @@ class ListenButton(ButtonBehavior, Widget):
             Rectangle(pos=(cx - r * 0.2, cy - r * 0.55), size=(r * 0.4, r * 0.07))
 
 
-# ---------- phone helpers ----------
 def open_url(url):
     if platform == "android":
         from jnius import autoclass
@@ -319,12 +317,12 @@ class Player:
 PLAYER = Player()
 
 
-# ---------- screens ----------
 class Home(Screen):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.busy = False
-        root = BoxLayout(orientation="vertical", padding=[dp(20), dp(16), dp(20), dp(14)], spacing=dp(8))
+        root = BoxLayout(orientation="vertical", padding=[dp(20), dp(16), dp(20), dp(14)], spacing=dp(10))
+
         top = BoxLayout(size_hint_y=None, height=dp(56), spacing=dp(12))
         top.add_widget(Logo(52, pos_hint={"center_y": 0.5}))
         names = BoxLayout(orientation="vertical")
@@ -332,6 +330,7 @@ class Home(Screen):
         names.add_widget(label("Find any song in seconds", 13, DIM, height=22))
         top.add_widget(names)
         root.add_widget(top)
+
         self.counter = label("", 14, DIM, height=22)
         root.add_widget(self.counter)
 
@@ -339,9 +338,24 @@ class Home(Screen):
         self.listen.bind(on_release=lambda *_: self.start())
         root.add_widget(self.listen)
 
-        self.status = label("Play a song near your phone, then tap the button.", 16, TEXT,
-                            height=64, halign="center")
+        self.status = label("Play a song near your phone, then tap the button.", 15, TEXT, height=48, halign="center")
         root.add_widget(self.status)
+
+        root.add_widget(label("Or search by name", 14, DIM, height=24, halign="center"))
+
+        search_box = Surface(bg=CARD, radius=16, size_hint_y=None, height=dp(56), padding=[dp(12), dp(6)], spacing=dp(10))
+        self.search_input = TextInput(
+            hint_text="Type song or artist name...",
+            multiline=False, size_hint_y=None, height=dp(44), font_size=dp(15),
+            background_normal="", background_active="", background_color=(0, 0, 0, 0),
+            foreground_color=TEXT, cursor_color=AMBER, hint_text_color=DIM,
+            padding=[dp(6), dp(10), dp(6), dp(10)]
+        )
+        search_box.add_widget(self.search_input)
+        search_btn = RoundButton("Search", bg=AMBER, fg=DARK, height=44, size_hint_x=None, width=dp(90))
+        search_btn.bind(on_release=self.do_search)
+        search_box.add_widget(search_btn)
+        root.add_widget(search_box)
 
         tabs = Surface(bg=CARD, radius=20, size_hint_y=None, height=dp(64), padding=dp(6), spacing=dp(6))
         for name, target in (("History", "history"), ("Library", "library"), ("Settings", "settings")):
@@ -350,6 +364,14 @@ class Home(Screen):
             tabs.add_widget(t)
         root.add_widget(tabs)
         self.add_widget(root)
+
+    def do_search(self, *args):
+        query = self.search_input.text.strip()
+        if not query:
+            self.set_status("Please type a song or artist name.")
+            return
+        open_url("https://www.google.com/search?q=" + quote_plus(query + " song"))
+        self.set_status(f"Searching for: {query}")
 
     def on_pre_enter(self, *a):
         s = core.get_settings()
@@ -370,7 +392,7 @@ class Home(Screen):
 
     def _after_permission(self, ok):
         if not ok:
-            self.set_status("The microphone is blocked. Allow it in Android Settings, Apps, Song Detector.")
+            self.set_status("Microphone is blocked. Allow it in Android Settings.")
             return
         self.run(record_first=True, over=False)
 
@@ -440,8 +462,15 @@ class SongScreen(Screen):
         root = BoxLayout(orientation="vertical", padding=[dp(20), dp(16), dp(20), dp(14)], spacing=dp(10))
         root.add_widget(header("Song found", lambda: App.get_running_app().go(self.back)))
 
-        card = Surface(bg=CARD, radius=20, size_hint_y=None, height=dp(120), padding=dp(16), spacing=dp(16))
-        card.add_widget(cover(entry["title"], 88))
+        card = Surface(bg=CARD, radius=20, size_hint_y=None, height=dp(130), padding=dp(16), spacing=dp(16))
+        cover_widget = cover(entry["title"], 90)
+        if entry.get("image"):
+            try:
+                from kivy.uix.image import AsyncImage
+                cover_widget = AsyncImage(source=entry["image"], size_hint=(None, None), size=(dp(90), dp(90)))
+            except Exception:
+                pass
+        card.add_widget(cover_widget)
         info = BoxLayout(orientation="vertical", spacing=dp(2))
         info.add_widget(label(entry["title"], 20, bold=True, height=30, one_line=True))
         info.add_widget(label(entry["artist"], 16, AMBER, height=26, one_line=True))
@@ -457,8 +486,7 @@ class SongScreen(Screen):
         items.insert(1, ("Search the web", web))
         for name, url in items:
             colour = next((c for key, c in SERVICES.items() if key in name), AMBER)
-            row = Row(bg=CARD, radius=14, size_hint_y=None, height=dp(56), padding=[dp(16), 0, dp(16), 0],
-                      spacing=dp(14))
+            row = Row(bg=CARD, radius=14, size_hint_y=None, height=dp(56), padding=[dp(16), 0, dp(16), 0], spacing=dp(14))
             row.add_widget(Dot(colour, pos_hint={"center_y": 0.5}))
             row.add_widget(label(name, 16, TEXT, bold=True, height=56, one_line=True))
             row.add_widget(label(">", 18, DIM, height=56, halign="right"))
@@ -470,14 +498,39 @@ class SongScreen(Screen):
 
         self.note = label("", 13, DIM, height=20, halign="center")
         root.add_widget(self.note)
+
         self.preview_btn = RoundButton("Play 30-second preview", bg=CARD, fg=TEXT)
         self.preview_btn.bind(on_release=lambda *_: self.toggle_preview())
         root.add_widget(self.preview_btn)
+
+        buttons = BoxLayout(size_hint_y=None, height=dp(52), spacing=dp(12))
+        share_btn = RoundButton("Share", bg=CARD, fg=TEXT)
+        share_btn.bind(on_release=lambda *_: self.share_song())
+        buttons.add_widget(share_btn)
         self.save_btn = RoundButton("", bg=AMBER, fg=DARK)
         self.save_btn.bind(on_release=lambda *_: self.toggle())
-        root.add_widget(self.save_btn)
+        buttons.add_widget(self.save_btn)
+        root.add_widget(buttons)
+
         self.refresh_save()
         self.add_widget(root)
+
+    def share_song(self):
+        text = f"🎵 {self.entry['title']} - {self.entry['artist']}\nDetected with Wenzosong Detector"
+        if platform == "android":
+            try:
+                from jnius import autoclass
+                Intent = autoclass("android.content.Intent")
+                String = autoclass("java.lang.String")
+                activity = autoclass("org.kivy.android.PythonActivity").mActivity
+                intent = Intent(Intent.ACTION_SEND)
+                intent.setType("text/plain")
+                intent.putExtra(Intent.EXTRA_TEXT, String(text))
+                activity.startActivity(Intent.createChooser(intent, String("Share song")))
+            except Exception as e:
+                self.note.text = f"Could not share: {e}"
+        else:
+            print(text)
 
     def on_leave(self, *a):
         self.stop_preview()
@@ -499,11 +552,11 @@ class SongScreen(Screen):
         try:
             url = preview.find_preview(entry["artist"], entry["title"])
             if not url:
-                error = "No preview is available for this song."
+                error = "No preview available for this song."
             else:
                 preview.download(url, path)
         except Exception:
-            error = "Could not load the preview. Check your internet."
+            error = "Could not load the preview."
         if error:
             Clock.schedule_once(lambda dt: self._preview_failed(error))
         else:
@@ -521,10 +574,10 @@ class SongScreen(Screen):
         try:
             PLAYER.play(path)
         except Exception as err:
-            self._preview_failed(f"Could not play the preview: {err}")
+            self._preview_failed(f"Could not play: {err}")
             return
         self.preview_btn.text = "Stop preview"
-        self.note.text = "Playing a 30-second preview from Apple's iTunes"
+        self.note.text = "Playing 30-second preview"
         self.poll = Clock.schedule_interval(self._check, 0.5)
 
     def _check(self, dt):
@@ -564,7 +617,7 @@ class ListScreen(Screen):
         root.add_widget(header(f"{self.mode.capitalize()} ({len(items)})", lambda: App.get_running_app().go("home")))
         scroll, grid = scroll_list()
         if not items:
-            grid.add_widget(label("Nothing here yet. Detect a song and it will appear here.", 16, DIM))
+            grid.add_widget(label("Nothing here yet.", 16, DIM))
         for e in items:
             row = Row(bg=CARD, radius=16, size_hint_y=None, height=dp(76), padding=dp(10), spacing=dp(14))
             row.add_widget(cover(e["title"], 54))
@@ -594,7 +647,7 @@ class SettingsScreen(Screen):
         s = core.get_settings()
         root = BoxLayout(orientation="vertical", padding=[dp(20), dp(16), dp(20), dp(14)], spacing=dp(8))
         root.add_widget(header("Settings", lambda: App.get_running_app().go("home")))
-        root.add_widget(label("Your keys stay on this phone. Paste them here once.", 14, DIM))
+        root.add_widget(label("Your keys stay on this phone.", 14, DIM))
         scroll, grid = scroll_list()
         self.inputs = {}
         for key, title, hint in self.FIELDS:
@@ -640,7 +693,7 @@ class SongApp(App):
         self.sm.current = "song"
 
     def on_key(self, window, key, *args):
-        if key == 27:  # Android back button
+        if key == 27:
             if self.sm.current == "song":
                 self.sm.current = self.sm.get_screen("song").back
                 return True
