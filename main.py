@@ -26,20 +26,33 @@ import preview
 
 SECONDS = 10
 
-# ---------- colours ----------
-BG = (0.063, 0.082, 0.125, 1)
-CARD = (0.114, 0.141, 0.2, 1)
-TEXT = (0.93, 0.945, 0.97, 1)
-DIM = (0.58, 0.64, 0.74, 1)
-AMBER = (1, 0.72, 0.3, 1)
-REC = (1, 0.35, 0.37, 1)
-DARK = (0.08, 0.08, 0.1, 1)
+# ---------- colours (Neon Dark Theme) ----------
+BG = (0.04, 0.02, 0.08, 1)          # Deep black-purple background
+CARD = (0.10, 0.08, 0.18, 1)        # Dark card
+TEXT = (0.95, 0.95, 1, 1)           # Almost white text
+DIM = (0.55, 0.50, 0.75, 1)         # Soft purple-grey
+AMBER = (0.70, 0.45, 1.0, 1)        # Neon purple
+REC = (0.55, 0.30, 1.0, 1)          # Strong neon purple for the button
+DARK = (0.05, 0.03, 0.10, 1)
 CLEAR = (0, 0, 0, 0)
-COVERS = [(0.24, 0.84, 0.76, 1), (0.65, 0.55, 0.98, 1), (0.96, 0.56, 0.69, 1),
-          (0.55, 0.82, 0.31, 1), (0.42, 0.71, 1, 1), (1, 0.72, 0.3, 1)]
-SERVICES = {"YouTube": (1, 0.25, 0.25, 1), "Spotify": (0.12, 0.84, 0.38, 1),
-            "Apple Music": (0.98, 0.34, 0.5, 1), "Boomplay": (0.2, 0.6, 1, 1),
-            "Audiomack": (1, 0.62, 0.1, 1), "Search": (0.62, 0.68, 0.78, 1)}
+
+COVERS = [
+    (0.45, 0.25, 0.95, 1),
+    (0.55, 0.30, 1.0, 1),
+    (0.35, 0.55, 1.0, 1),
+    (0.70, 0.35, 0.95, 1),
+    (0.40, 0.70, 1.0, 1),
+    (0.60, 0.40, 1.0, 1)
+]
+
+SERVICES = {
+    "YouTube": (1, 0.25, 0.25, 1),
+    "Spotify": (0.12, 0.84, 0.38, 1),
+    "Apple Music": (0.98, 0.34, 0.5, 1),
+    "Boomplay": (0.2, 0.6, 1, 1),
+    "Audiomack": (1, 0.62, 0.1, 1),
+    "Search": (0.62, 0.68, 0.78, 1)
+}
 
 
 # ---------- building blocks ----------
@@ -58,8 +71,6 @@ def label(text, size=16, color=TEXT, bold=False, height=None, halign="left", one
 
 
 class Surface(BoxLayout):
-    """A box with a rounded, coloured background."""
-
     def __init__(self, bg=CARD, radius=16, **kw):
         super().__init__(**kw)
         with self.canvas.before:
@@ -76,8 +87,6 @@ class Surface(BoxLayout):
 
 
 class Row(ButtonBehavior, Surface):
-    """A tappable Surface."""
-
     def __init__(self, bg=CARD, **kw):
         super().__init__(bg=bg, **kw)
         self._base = bg
@@ -125,8 +134,6 @@ class Dot(Widget):
 
 
 class Logo(Widget):
-    """The app logo (icon.png) with rounded corners."""
-
     def __init__(self, side=52, **kw):
         super().__init__(size_hint=(None, None), size=(dp(side), dp(side)), **kw)
         with self.canvas:
@@ -166,8 +173,6 @@ def scroll_list():
 
 
 class ListenButton(ButtonBehavior, Widget):
-    """The big round button. It pulses while the app is listening."""
-
     def __init__(self, **kw):
         super().__init__(**kw)
         self.active = False
@@ -198,16 +203,16 @@ class ListenButton(ButtonBehavior, Widget):
                 for offset in (0.0, 0.5):
                     p = (self.phase + offset) % 1
                     rr = r * (1 + p * 0.9)
-                    Color(1, 0.35, 0.37, 0.35 * (1 - p))
+                    Color(0.55, 0.30, 1.0, 0.35 * (1 - p))
                     Ellipse(pos=(cx - rr, cy - rr), size=(2 * rr, 2 * rr))
             else:
                 rr = r * 1.35
-                Color(1, 0.35, 0.37, 0.18)
+                Color(0.55, 0.30, 1.0, 0.18)
                 Ellipse(pos=(cx - rr, cy - rr), size=(2 * rr, 2 * rr))
             if self.disabled:
-                Color(0.8, 0.3, 0.32, 0.6)
+                Color(0.4, 0.2, 0.7, 0.6)
             elif self.state == "down":
-                Color(0.8, 0.25, 0.28, 1)
+                Color(0.45, 0.22, 0.85, 1)
             else:
                 Color(*REC)
             Ellipse(pos=(cx - r, cy - r), size=(2 * r, 2 * r))
@@ -233,7 +238,6 @@ def open_url(url):
 
 
 def ask_mic(callback):
-    """callback(True/False) is called on the main thread."""
     if platform != "android":
         callback(True)
         return
@@ -246,8 +250,6 @@ def ask_mic(callback):
 
 
 class Recorder:
-    """Records the microphone to an .m4a file using Android's MediaRecorder."""
-
     def __init__(self, path):
         self.path = path
         self.rec = None
@@ -283,8 +285,6 @@ class Recorder:
 
 
 class Player:
-    """Plays a downloaded preview file using Android's MediaPlayer."""
-
     def __init__(self):
         self.mp = None
 
@@ -303,14 +303,14 @@ class Player:
     def is_playing(self):
         try:
             return self.mp is not None and bool(self.mp.isPlaying())
-        except Exception:  # noqa: BLE001
+        except Exception:
             return False
 
     def stop(self):
         if self.mp:
             try:
                 self.mp.stop()
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
             self.mp.release()
             self.mp = None
@@ -395,7 +395,7 @@ class Home(Screen):
                 rec.stop()
             self.post(self.set_status, "Identifying...")
             entry, msg, code = core.detect(path, over)
-        except Exception as err:  # noqa: BLE001 - show any problem on screen
+        except Exception as err:
             entry, msg, code = None, f"Something went wrong: {err}", "error"
         self.post(self.finish, entry, msg, code)
 
@@ -482,7 +482,6 @@ class SongScreen(Screen):
     def on_leave(self, *a):
         self.stop_preview()
 
-    # ----- 30-second preview -----
     def toggle_preview(self):
         if self.loading:
             return
@@ -503,7 +502,7 @@ class SongScreen(Screen):
                 error = "No preview is available for this song."
             else:
                 preview.download(url, path)
-        except Exception:  # noqa: BLE001
+        except Exception:
             error = "Could not load the preview. Check your internet."
         if error:
             Clock.schedule_once(lambda dt: self._preview_failed(error))
@@ -521,7 +520,7 @@ class SongScreen(Screen):
             return
         try:
             PLAYER.play(path)
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:
             self._preview_failed(f"Could not play the preview: {err}")
             return
         self.preview_btn.text = "Stop preview"
