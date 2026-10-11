@@ -612,28 +612,114 @@ class ListScreen(Screen):
 
     def on_pre_enter(self, *a):
         self.clear_widgets()
-        items = list(reversed(core.get_history() if self.mode == "history" else core.get_library()))
         root = BoxLayout(orientation="vertical", padding=[dp(20), dp(16), dp(20), dp(14)], spacing=dp(12))
-        root.add_widget(header(f"{self.mode.capitalize()} ({len(items)})", lambda: App.get_running_app().go("home")))
+        root.add_widget(header(f"{self.mode.capitalize()}", lambda: App.get_running_app().go("home")))
+
         scroll, grid = scroll_list()
-        if not items:
-            grid.add_widget(label("Nothing here yet.", 16, DIM))
-        for e in items:
-            row = Row(bg=CARD, radius=16, size_hint_y=None, height=dp(76), padding=dp(10), spacing=dp(14))
-            row.add_widget(cover(e["title"], 54))
-            info = BoxLayout(orientation="vertical", spacing=dp(2))
-            info.add_widget(label(e["title"], 16, bold=True, height=26, one_line=True))
-            sub = e["artist"] + (f"  -  {e['date']}" if self.mode == "history" else "")
-            info.add_widget(label(sub, 13, DIM, height=22, one_line=True))
-            row.add_widget(info)
-            row.bind(on_release=lambda _r, entry=e: App.get_running_app().open_song(entry, self.mode))
-            grid.add_widget(row)
+
+        if self.mode == "library":
+            # ===== Saved songs (from detection) =====
+            saved = list(reversed(core.get_library()))
+            grid.add_widget(label("Saved Songs", 16, AMBER, height=30, bold=True))
+
+            if not saved:
+                grid.add_widget(label("No saved songs yet.", 14, DIM, height=28))
+            else:
+                for e in saved:
+                    row = Row(bg=CARD, radius=16, size_hint_y=None, height=dp(76), padding=dp(10), spacing=dp(14))
+                    row.add_widget(cover(e["title"], 54))
+                    info = BoxLayout(orientation="vertical", spacing=dp(2))
+                    info.add_widget(label(e["title"], 16, bold=True, height=26, one_line=True))
+                    info.add_widget(label(e["artist"], 13, DIM, height=22, one_line=True))
+                    row.add_widget(info)
+                    row.bind(on_release=lambda _r, entry=e: App.get_running_app().open_song(entry, self.mode))
+                    grid.add_widget(row)
+
+            # ===== Local Music on phone =====
+            grid.add_widget(label("", 10, height=20))  # space
+            grid.add_widget(label("On this phone", 16, AMBER, height=30, bold=True))
+
+            local_songs = self.scan_local_music()
+            if not local_songs:
+                grid.add_widget(label("No local music found yet.\nDownload some songs and they will appear here.", 14, DIM))
+            else:
+                for song in local_songs:
+                    row = Row(bg=CARD, radius=16, size_hint_y=None, height=dp(70), padding=dp(12), spacing=dp(12))
+                    row.add_widget(label("🎵", 22, height=50, size_hint_x=None, width=dp(40)))
+                    info = BoxLayout(orientation="vertical")
+                    info.add_widget(label(song["title"], 15, bold=True, height=26, one_line=True))
+                    info.add_widget(label(song["path"], 11, DIM, height=20, one_line=True))
+                    row.add_widget(info)
+                    row.bind(on_release=lambda _r, p=song["path"]: self.play_local(p))
+                    grid.add_widget(row)
+
+        else:
+            # History mode (normal)
+            items = list(reversed(core.get_history()))
+            if not items:
+                grid.add_widget(label("Nothing here yet.", 16, DIM))
+            for e in items:
+                row = Row(bg=CARD, radius=16, size_hint_y=None, height=dp(76), padding=dp(10), spacing=dp(14))
+                row.add_widget(cover(e["title"], 54))
+                info = BoxLayout(orientation="vertical", spacing=dp(2))
+                info.add_widget(label(e["title"], 16, bold=True, height=26, one_line=True))
+                sub = e["artist"] + (f"  -  {e['date']}" if self.mode == "history" else "")
+                info.add_widget(label(sub, 13, DIM, height=22, one_line=True))
+                row.add_widget(info)
+                row.bind(on_release=lambda _r, entry=e: App.get_running_app().open_song(entry, self.mode))
+                grid.add_widget(row)
+
+            if items:
+                clear = RoundButton("Clear history", bg=CARD, fg=REC)
+                clear.bind(on_release=lambda *_: (core.clear_history(), self.on_pre_enter()))
+                root.add_widget(clear)
+
         root.add_widget(scroll)
-        if self.mode == "history" and items:
-            clear = RoundButton("Clear history", bg=CARD, fg=REC)
-            clear.bind(on_release=lambda *_: (core.clear_history(), self.on_pre_enter()))
-            root.add_widget(clear)
         self.add_widget(root)
+
+    def scan_local_music(self):
+        """Scan common folders for music files."""
+        songs = []
+        extensions = (".mp3", ".m4a", ".aac", ".wav", ".flac", ".ogg")
+
+        # Common music locations on Android
+        possible_paths = [
+            "/storage/emulated/0/Music",
+            "/storage/emulated/0/Download",
+            "/storage/emulated/0/Downloads",
+            "/storage/emulated/0/Telegram",
+            "/storage/emulated/0/WhatsApp/Media/WhatsApp Audio",
+            "/storage/emulated/0/Movies",
+            "/sdcard/Music",
+            "/sdcard/Download",
+        ]
+
+        for folder in possible_paths:
+            if not os.path.exists(folder):
+                continue
+            try:
+                for root_dir, dirs, files in os.walk(folder):
+                    for file in files:
+                        if file.lower().endswith(extensions):
+                            full_path = os.path.join(root_dir, file)
+                            title = os.path.splitext(file)[0]
+                            songs.append({
+                                "title": title,
+                                "path": full_path
+                            })
+            except Exception:
+                continue
+
+        # Remove duplicates and sort
+        unique = {s["path"]: s for s in songs}
+        return sorted(unique.values(), key=lambda x: x["title"].lower())
+
+    def play_local(self, path):
+        try:
+            PLAYER.play(path)
+            self.note_text = f"Playing: {os.path.basename(path)}"
+        except Exception as e:
+            print("Could not play:", e)
 
 
 class SettingsScreen(Screen):
